@@ -80,6 +80,8 @@ private[sql] class DiskPartition (
     */
   def insert(row: Row) = {
     /* IMPLEMENT THIS METHOD */
+    if(measurePartitionSize() > blockSize) spillPartitionToDisk()
+    data.add(row)
   }
 
   /**
@@ -123,12 +125,15 @@ private[sql] class DiskPartition (
 
       override def next() = {
         /* IMPLEMENT THIS METHOD */
-        null
+        val currentChunkSize: Int = chunkSizeIterator.next()
+        for(var i <- 1 to currentChunkSize) {
+          byteArray.
+        }
       }
 
       override def hasNext() = {
         /* IMPLEMENT THIS METHOD */
-        false
+        currentIterator.hasNext
       }
 
       /**
@@ -154,6 +159,8 @@ private[sql] class DiskPartition (
   def closeInput() = {
     /* IMPLEMENT THIS METHOD */
     inputClosed = true
+    spillPartitionToDisk()
+    outStream.close()
   }
 
 
