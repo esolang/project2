@@ -53,7 +53,6 @@ protected [sql] final class GeneralDiskHashedRelation(partitions: Array[DiskPart
 
   override def getIterator() = {
     /* IMPLEMENT THIS METHOD */
-    null
   }
 
   override def closeAllPartitions() = {
@@ -80,8 +79,8 @@ private[sql] class DiskPartition (
     */
   def insert(row: Row) = {
     /* IMPLEMENT THIS METHOD */
-    if(measurePartitionSize() > blockSize) spillPartitionToDisk()
     data.add(row)
+    if(measurePartitionSize() > blockSize) spillPartitionToDisk()
   }
 
   /**
@@ -125,15 +124,12 @@ private[sql] class DiskPartition (
 
       override def next() = {
         /* IMPLEMENT THIS METHOD */
-        val currentChunkSize: Int = chunkSizeIterator.next()
-        for(var i <- 1 to currentChunkSize) {
-          byteArray.
-        }
+        if (fetchNextChunk()) byteArray else null
       }
 
       override def hasNext() = {
         /* IMPLEMENT THIS METHOD */
-        currentIterator.hasNext
+        currentIterator.hasNext()
       }
 
       /**
@@ -144,7 +140,12 @@ private[sql] class DiskPartition (
         */
       private[this] def fetchNextChunk(): Boolean = {
         /* IMPLEMENT THIS METHOD */
-        false
+        var hasNext = currentIterator.hasNext()
+        if (hasNext) {
+          byteArray = CS143Utils.getNextChunkBytes(inStream, chunkSizeIterator.next(), byteArray)
+          currentIterator.next()
+        }
+        hasNext
       }
     }
   }
@@ -159,7 +160,8 @@ private[sql] class DiskPartition (
   def closeInput() = {
     /* IMPLEMENT THIS METHOD */
     inputClosed = true
-    spillPartitionToDisk()
+    closePartition()
+    if (!writtenToDisk) spillPartitionToDisk()
     outStream.close()
   }
 
