@@ -174,7 +174,7 @@ private[sql] class DiskPartition (
     */
   def closeInput() = {
     /* IMPLEMENT THIS METHOD */
-    if (!writtenToDisk) {
+    if (!writtenToDisk && data.size > 0) {
       spillPartitionToDisk()
       data.clear()
     }
@@ -216,6 +216,25 @@ private[sql] object DiskHashedRelation {
               size: Int = 64,
               blockSize: Int = 64000) = {
     /* IMPLEMENT THIS METHOD */
-    null
+    var diskPartitions: Array[DiskPartition] = new Array[DiskPartition](size)
+    /* Initializes an array of disk partitions */
+    for (i <- 0 until diskPartitions.length) {
+      diskPartitions(i) = new DiskPartition("ghostbuster" + Integer.toString(i), blockSize)
+    }
+
+    while (input.hasNext) {
+      val currRow: Row = input.next()
+      val hashKey: Int = keyGenerator.apply(currRow).hashCode() % size
+      diskPartitions(hashKey).insert(currRow)
+    }
+
+    for (j <- 0 until diskPartitions.length) {
+      diskPartitions(j).closeInput()
+    }
+
+    var hashedRelation: GeneralDiskHashedRelation = new GeneralDiskHashedRelation(diskPartitions)
+
+    // RETURN
+    hashedRelation
   }
 }

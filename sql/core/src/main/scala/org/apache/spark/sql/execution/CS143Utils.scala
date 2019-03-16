@@ -129,6 +129,11 @@ object CS143Utils {
     */
   def getUdfFromExpressions(expressions: Seq[Expression]): ScalaUdf = {
     /* IMPLEMENT THIS METHOD */
+    for (e <- expressions.reverse) {
+      e match {
+        case u: ScalaUdf => return u
+      }
+    }
     null
   }
 
@@ -225,12 +230,12 @@ object CachingIteratorGenerator {
 
       def hasNext() = {
         /* IMPLEMENT THIS METHOD */
-        false
+        input.hasNext
       }
 
       def next() = {
         /* IMPLEMENT THIS METHOD */
-        null
+
       }
     }
   }
