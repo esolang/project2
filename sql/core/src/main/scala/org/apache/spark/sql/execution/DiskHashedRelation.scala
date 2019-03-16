@@ -53,10 +53,14 @@ protected [sql] final class GeneralDiskHashedRelation(partitions: Array[DiskPart
 
   override def getIterator() = {
     /* IMPLEMENT THIS METHOD */
+    partitions.toIterator
   }
 
   override def closeAllPartitions() = {
     /* IMPLEMENT THIS METHOD */
+    for (i <- partitions) {
+      i.closePartition()
+    }
   }
 }
 
@@ -79,8 +83,17 @@ private[sql] class DiskPartition (
     */
   def insert(row: Row) = {
     /* IMPLEMENT THIS METHOD */
+    if(inputClosed) {
+      throw new SparkException("Cannot insert row after closing input!")
+    }
+    var rowList = new JavaArrayList[Row]
+    rowList.add(row)
+    if(CS143Utils.getBytesFromList(rowList).size + measurePartitionSize() > blockSize) {
+      spillPartitionToDisk()
+      data.clear()
+    }
     data.add(row)
-    if(measurePartitionSize() > blockSize) spillPartitionToDisk()
+    writtenToDisk = false
   }
 
   /**
@@ -124,12 +137,14 @@ private[sql] class DiskPartition (
 
       override def next() = {
         /* IMPLEMENT THIS METHOD */
-        if (fetchNextChunk()) byteArray else null
+        if (currentIterator.hasNext) currentIterator.next()
+        else if (fetchNextChunk()) currentIterator.next()
+        else null
       }
 
       override def hasNext() = {
         /* IMPLEMENT THIS METHOD */
-        currentIterator.hasNext()
+        currentIterator.hasNext || chunkSizeIterator.hasNext
       }
 
       /**
@@ -140,12 +155,12 @@ private[sql] class DiskPartition (
         */
       private[this] def fetchNextChunk(): Boolean = {
         /* IMPLEMENT THIS METHOD */
-        var hasNext = currentIterator.hasNext()
-        if (hasNext) {
+        if (chunkSizeIterator.hasNext) {
           byteArray = CS143Utils.getNextChunkBytes(inStream, chunkSizeIterator.next(), byteArray)
-          currentIterator.next()
+          currentIterator = CS143Utils.getListFromBytes(byteArray).iterator.asScala
+          true
         }
-        hasNext
+        else false
       }
     }
   }
@@ -159,10 +174,12 @@ private[sql] class DiskPartition (
     */
   def closeInput() = {
     /* IMPLEMENT THIS METHOD */
-    inputClosed = true
-    closePartition()
-    if (!writtenToDisk) spillPartitionToDisk()
+    if (!writtenToDisk) {
+      spillPartitionToDisk()
+      data.clear()
+    }
     outStream.close()
+    inputClosed = true
   }
 
 
