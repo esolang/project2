@@ -272,12 +272,17 @@ object AggregateIteratorGenerator {
 
       def hasNext() = {
         /* IMPLEMENT THIS METHOD */
-        false
+        input.hasNext
       }
 
       def next() = {
         /* IMPLEMENT THIS METHOD */
-        null
+        //
+        val aggregateResult = new GenericMutableRow(1)
+        val (group, aggFunction) = input.next()
+        aggregateResult(0) = aggFunction.eval(EmptyRow)
+        val joinedRow = new JoinedRow4
+        postAggregateProjection(joinedRow(aggregateResult,group))
       }
     }
   }
